@@ -260,6 +260,11 @@ At the time of writing this only works with OneDrive personal paid accounts.
 `,
 			Advanced: true,
 		}, {
+			Name:     "shared_with_me",
+			Default:  false,
+			Help:     "Only show files that are shared with me. EXPERIMENTAL",
+			Advanced: true,
+		}, {
 			Name:     config.ConfigEncoding,
 			Help:     config.ConfigEncodingHelp,
 			Advanced: true,
@@ -597,6 +602,7 @@ type Options struct {
 	LinkScope               string               `config:"link_scope"`
 	LinkType                string               `config:"link_type"`
 	LinkPassword            string               `config:"link_password"`
+	SharedWithMe            bool                 `config:"shared_with_me"`
 	Enc                     encoder.MultiEncoder `config:"encoding"`
 }
 
@@ -2205,7 +2211,7 @@ func (o *Object) ID() string {
 // and returns itemID, driveID, rootURL.
 // Such a normalized ID can come from (*Item).GetID()
 func (f *Fs) parseNormalizedID(ID string) (string, string, string) {
-	rootURL := graphAPIEndpoint[f.opt.Region] + "/v1.0/drives"
+	rootURL := graphAPIEndpoint[f.opt.Region] + "/v1.0"
 	if strings.Contains(ID, "#") {
 		s := strings.Split(ID, "#")
 		return s[1], s[0], rootURL
@@ -2218,13 +2224,22 @@ func (f *Fs) parseNormalizedID(ID string) (string, string, string) {
 func (f *Fs) newOptsCall(normalizedID string, method string, route string) (opts rest.Opts) {
 	id, drive, rootURL := f.parseNormalizedID(normalizedID)
 
+	fmt.Println("Using shared with me: ", f.opt.SharedWithMe)
 	if drive != "" {
+		var path string
+		if f.opt.SharedWithMe == true {
+			path = "/me/drive/sharedWithMe"
+		} else {
+			path = "/drives/" + drive + "/items/" + id + route
+		}
+
 		return rest.Opts{
 			Method:  method,
 			RootURL: rootURL,
-			Path:    "/" + drive + "/items/" + id + route,
+			Path:    path,
 		}
 	}
+
 	return rest.Opts{
 		Method: method,
 		Path:   "/items/" + id + route,
